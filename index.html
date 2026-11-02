@@ -1,0 +1,433 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Master - Game trắc nghiệm</title>
+<style>
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#e0c3fc,#8ec5fc);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.container {
+    background: white;
+    width: 100%;
+    max-width: 650px;
+    padding: 35px;
+    border-radius: 25px;
+    box-shadow: 0 15px 45px #51447730;
+}
+h1 { color: #7552b8; text-align: center; }
+.subtitle { text-align: center; color: #777; }
+.screen { display: none; }
+.screen.active { display: block; }
+input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    font-size: 16px;
+    margin: 15px 0;
+}
+button {
+    border: none;
+    padding: 14px 22px;
+    border-radius: 12px;
+    background: #8965d5;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: .2s;
+}
+button:hover { background: #6844b4; transform: translateY(-2px); }
+.main-btn { width: 100%; margin-top: 12px; }
+.info {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 20px 0;
+    color: #7552b8;
+    font-weight: bold;
+}
+.progress {
+    height: 10px;
+    background: #eee;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 25px;
+}
+.progress-bar {
+    height: 100%;
+    width: 0;
+    background: #8965d5;
+    transition: .3s;
+}
+.question {
+    font-size: 21px;
+    font-weight: bold;
+    color: #333;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+.answer {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #f5f1fc;
+    color: #444;
+    border: 2px solid transparent;
+    margin: 12px 0;
+    font-weight: normal;
+}
+.answer:hover:not(:disabled) {
+    background: #e9dfff;
+    border-color: #8965d5;
+}
+.answer.correct {
+    background: #d8f8e3;
+    border-color: #32b56b;
+    color: #16783e;
+}
+.answer.wrong {
+    background: #ffe0e0;
+    border-color: #e35c5c;
+    color: #b52d2d;
+}
+.answer:disabled { cursor: default; }
+.feedback {
+    text-align: center;
+    font-weight: bold;
+    margin: 18px 0;
+    min-height: 24px;
+}
+.next-btn { width: 100%; }
+.result {
+    text-align: center;
+}
+.score {
+    font-size: 55px;
+    color: #8965d5;
+    font-weight: bold;
+    margin: 20px;
+}
+.emoji { font-size: 65px; text-align: center; }
+.small { color: #888; font-size: 14px; text-align: center; }
+@media(max-width:500px) {
+    .container { padding: 22px; }
+    .question { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- MÀN HÌNH BẮT ĐẦU -->
+    <div id="startScreen" class="screen active">
+        <div class="emoji">🎮</div>
+        <h1>QUIZ MASTER</h1>
+        <p class="subtitle">Chinh phục kiến thức - Khám phá bản thân!</p>
+        <h3>🌟 Chào mừng bạn đến với trò chơi!</h3>
+        <p>Hãy nhập tên để bắt đầu thử thách nhé.</p>
+        <input id="playerName" type="text" placeholder="Nhập tên người chơi...">
+        <button class="main-btn" onclick="startGame()">BẮT ĐẦU CHƠI 🚀</button>
+        <p class="small">10 câu hỏi • 15 giây mỗi câu</p>
+    </div>
+
+    <!-- MÀN HÌNH CÂU HỎI -->
+    <div id="quizScreen" class="screen">
+        <h1>🧠 QUIZ MASTER</h1>
+
+        <div class="info">
+            <span id="questionNumber">Câu 1/10</span>
+            <span id="timer">⏱ 15 giây</span>
+            <span id="score">⭐ 0 điểm</span>
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="question" id="questionText"></div>
+
+        <div id="answers"></div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <button class="next-btn" id="nextBtn"
+            onclick="nextQuestion()" style="display:none">
+            CÂU TIẾP THEO ➜
+        </button>
+    </div>
+
+    <!-- MÀN HÌNH KẾT QUẢ -->
+    <div id="resultScreen" class="screen">
+        <div class="emoji" id="resultEmoji">🏆</div>
+        <h1>HOÀN THÀNH!</h1>
+        <p class="subtitle" id="resultName"></p>
+        <div class="score" id="finalScore">0/100</div>
+        <h3 id="resultMessage"></h3>
+        <p id="correctCount"></p>
+        <button class="main-btn" onclick="restartGame()">
+            🔄 CHƠI LẠI
+        </button>
+    </div>
+
+</div>
+
+<script>
+const questions = [
+    {
+        question: "Thủ đô của Việt Nam là thành phố nào?",
+        answers: ["Hải Phòng", "Hà Nội", "Đà Nẵng", "TP. Hồ Chí Minh"],
+        correct: 1
+    },
+    {
+        question: "Kết quả của phép tính 12 × 5 là bao nhiêu?",
+        answers: ["50", "55", "60", "65"],
+        correct: 2
+    },
+    {
+        question: "HTML là viết tắt của cụm từ nào?",
+        answers: [
+            "HyperText Markup Language",
+            "HighText Machine Language",
+            "Hyper Transfer Main Language",
+            "Home Tool Markup Language"
+        ],
+        correct: 0
+    },
+    {
+        question: "Thiết bị nào dùng để kết nối các mạng máy tính?",
+        answers: ["Bàn phím", "Router", "Máy in", "Chuột"],
+        correct: 1
+    },
+    {
+        question: "Hành tinh nào gần Mặt Trời nhất?",
+        answers: ["Trái Đất", "Sao Hỏa", "Sao Kim", "Sao Thủy"],
+        correct: 3
+    },
+    {
+        question: "Ngôn ngữ nào thường được sử dụng để tạo giao diện web?",
+        answers: ["HTML", "SQL", "Python", "C++"],
+        correct: 0
+    },
+    {
+        question: "Một byte bằng bao nhiêu bit?",
+        answers: ["4 bit", "8 bit", "16 bit", "32 bit"],
+        correct: 1
+    },
+    {
+        question: "CPU là bộ phận nào của máy tính?",
+        answers: [
+            "Bộ nhớ ngoài",
+            "Bộ xử lý trung tâm",
+            "Thiết bị nhập",
+            "Thiết bị xuất"
+        ],
+        correct: 1
+    },
+    {
+        question: "Phần mềm nào sau đây dùng để soạn thảo văn bản?",
+        answers: ["Microsoft Word", "Google Chrome", "Paint", "VLC"],
+        correct: 0
+    },
+    {
+        question: "Kết quả của phép tính 2 mũ 5 là bao nhiêu?",
+        answers: ["16", "24", "32", "64"],
+        correct: 2
+    }
+];
+
+let currentQuestion = 0;
+let points = 0;
+let correctAnswers = 0;
+let player = "";
+let timeLeft = 15;
+let timerInterval;
+let answered = false;
+
+function showScreen(id) {
+    document.querySelectorAll(".screen").forEach(screen => {
+        screen.classList.remove("active");
+    });
+    document.getElementById(id).classList.add("active");
+}
+
+function startGame() {
+    player = document.getElementById("playerName").value.trim();
+
+    if (player === "") {
+        alert("Bạn hãy nhập tên trước khi bắt đầu nhé!");
+        return;
+    }
+
+    currentQuestion = 0;
+    points = 0;
+    correctAnswers = 0;
+
+    showScreen("quizScreen");
+    loadQuestion();
+}
+
+function loadQuestion() {
+    clearInterval(timerInterval);
+    answered = false;
+    timeLeft = 15;
+
+    const q = questions[currentQuestion];
+
+    document.getElementById("questionNumber").textContent =
+        `Câu ${currentQuestion + 1}/${questions.length}`;
+
+    document.getElementById("score").textContent =
+        `⭐ ${points} điểm`;
+
+    document.getElementById("questionText").textContent = q.question;
+
+    document.getElementById("progressBar").style.width =
+        `${currentQuestion / questions.length * 100}%`;
+
+    document.getElementById("feedback").textContent = "";
+    document.getElementById("nextBtn").style.display = "none";
+
+    const answersBox = document.getElementById("answers");
+    answersBox.innerHTML = "";
+
+    q.answers.forEach((answer, index) => {
+        const btn = document.createElement("button");
+        btn.className = "answer";
+        btn.textContent = String.fromCharCode(65 + index) + ". " + answer;
+        btn.onclick = () => chooseAnswer(index);
+        answersBox.appendChild(btn);
+    });
+
+    updateTimer();
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            chooseAnswer(-1);
+        }
+    }, 1000);
+}
+
+function updateTimer() {
+    document.getElementById("timer").textContent =
+        `⏱ ${timeLeft} giây`;
+}
+
+function chooseAnswer(index) {
+    if (answered) return;
+
+    answered = true;
+    clearInterval(timerInterval);
+
+    const q = questions[currentQuestion];
+    const buttons = document.querySelectorAll(".answer");
+
+    buttons.forEach((btn, i) => {
+        btn.disabled = true;
+
+        if (i === q.correct) {
+            btn.classList.add("correct");
+        }
+
+        if (i === index && index !== q.correct) {
+            btn.classList.add("wrong");
+        }
+    });
+
+    const feedback = document.getElementById("feedback");
+
+    if (index === q.correct) {
+        points += 10;
+        correctAnswers++;
+        feedback.textContent = "🎉 Chính xác! Bạn nhận được 10 điểm.";
+        feedback.style.color = "#209b55";
+    } else if (index === -1) {
+        feedback.textContent = "⏰ Hết giờ! Đáp án đúng đã được hiển thị.";
+        feedback.style.color = "#d68a20";
+    } else {
+        feedback.textContent = "❌ Chưa chính xác! Hãy cố gắng nhé.";
+        feedback.style.color = "#d64545";
+    }
+
+    document.getElementById("score").textContent =
+        `⭐ ${points} điểm`;
+
+    document.getElementById("progressBar").style.width =
+        `${(currentQuestion + 1) / questions.length * 100}%`;
+
+    document.getElementById("nextBtn").style.display = "block";
+
+    document.getElementById("nextBtn").textContent =
+        currentQuestion === questions.length - 1
+        ? "XEM KẾT QUẢ 🏆"
+        : "CÂU TIẾP THEO ➜";
+}
+
+function nextQuestion() {
+    if (!answered) return;
+
+    currentQuestion++;
+
+    if (currentQuestion < questions.length) {
+        loadQuestion();
+    } else {
+        showResult();
+    }
+}
+
+function showResult() {
+    clearInterval(timerInterval);
+    showScreen("resultScreen");
+
+    document.getElementById("resultName").textContent =
+        `Xin chúc mừng ${player}!`;
+
+    document.getElementById("finalScore").textContent =
+        `${points}/100`;
+
+    document.getElementById("correctCount").textContent =
+        `Bạn trả lời đúng ${correctAnswers}/${questions.length} câu hỏi.`;
+
+    let emoji, message;
+
+    if (points >= 90) {
+        emoji = "🏆";
+        message = "Xuất sắc! Bạn là nhà vô địch!";
+    } else if (points >= 70) {
+        emoji = "🌟";
+        message = "Rất tốt! Bạn có kiến thức tuyệt vời!";
+    } else if (points >= 50) {
+        emoji = "👏";
+        message = "Khá tốt! Hãy tiếp tục cố gắng!";
+    } else {
+        emoji = "💪";
+        message = "Đừng nản chí! Hãy thử lại nhé!";
+    }
+
+    document.getElementById("resultEmoji").textContent = emoji;
+    document.getElementById("resultMessage").textContent = message;
+}
+
+function restartGame() {
+    document.getElementById("playerName").value = player;
+    showScreen("startScreen");
+}
+</script>
+
+</body>
+</html>
